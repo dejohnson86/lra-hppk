@@ -1,31 +1,29 @@
-import time
-from sage.plot.histogram import Histogram
-from sage.modules.misc import gram_schmidt
-
 '''
-32 bit prime: 3320833723
-72: 4681074808958153331041
-136: 60475045147803217722699504640873937294951
-174: 23639474998292043714787719276401511591355325698674617
-256: 94067902964486534841221493569020601188977813763773733271352395468028284646947
-
-128: 340282366920938463463374607431768211297
-192: 5942469270856831795917092266069695163680807107647946407181
-256: 58404419428506214291982011245145040181275199295816272238310291089757935381339
-'''
+There are some extra functions included for further testing purposes, like encryption and decryption.
 
 #####################################
-### Universal Variables
+## A selection of usable primes of the given bit-length
 
-p=17065242806912356291
+32 bit prime: 3320833723
+64: 17065242806912356291
+72: 4681074808958153331041
+128: 340282366920938463463374607431768211297
+136: 60475045147803217722699504640873937294951
+174: 23639474998292043714787719276401511591355325698674617
+192: 5942469270856831795917092266069695163680807107647946407181
+256: 94067902964486534841221493569020601188977813763773733271352395468028284646947
+'''
 
-md=2*ceil(log(p,2))+8
-L=round(log(p,2))
-TLL=2**md
-TUL=2*TLL
+import time
 
-TPL=2**(3*ceil(log(p,2))+8)
-TPU=2*TPL
+#####################################
+### Universal HPPK Parameters/Objects
+
+p=94067902964486534841221493569020601188977813763773733271352395468028284646947
+
+md=2*ceil(log(p,2))+6
+tLL=2**md
+tUL=2*tLL
 
 Z.<z>=PolynomialRing(GF(p))
 X.<x>=PolynomialRing(ZZ)
@@ -33,32 +31,30 @@ X.<x>=PolynomialRing(ZZ)
 #####################################
 ### Auxiliary Functions
 
+# Checks bit-length
 def l2(n):
 	m=log(abs(n),2)
 	return(RR(m))
 
+# Generates a random polynomial over GF(p) with degree 'degr' 
 def rply(degr):
 	ply=0
 	for i in range(degr+1):
 		ply=ply+randint(2,p-1)*z**i
 	return(ply)
-	
+
+# Encrypts a list of integers by invertible modular multiplication	
 def EL(ly,Rx,tx):
 	ly2=[]
 	for i in range(len(ly)):
 		ly2+=[Rx*ly[i]%tx]
 	return(ly2)
 
+# Finds the number 'k' such that 'R1*n mod T1 = R1*n - T1*k'
 def mtr(n,R1,T1):
 	return((R1*n-(R1*n)%T1)/T1)
 
-def coefflims(vec):
-	for i in range(6):
-		if (vec[i]<1) or (vec[i]>p-1):
-			return(False)
-	return(True)
-
-
+# Divides out the overall gcd of a vector in ZZ^6
 def gcdoutV(vec):
 	ind=0
 	while vec[ind]==0:
@@ -71,37 +67,42 @@ def gcdoutV(vec):
 	vnew=vector(ZZ,copy(vec)/cv)
 	return(vnew,cv)
 
+# Checks if vector has elements within proper limits
+def coefflims(vec):
+	for i in range(6):
+		if (vec[i]<1) or (vec[i]>p-1):
+			return(False)
+		if ceil(vec[i])!=floor(vec[i]):
+			return(False)
+	return(True)
+
+
 #####################################
 ### Encryption and Decryption
-	
-def eval(Py,Ly):
+
+# Evaluates the integer polynomial 'Py' at Lxy=[x,y1,y2]	
+def eval(Py,Lxy):
 	ans=0
 	aL=[]	
 	for j in range(1,3):	
 		for i in range(3):
-			aL+=[(Ly[0]^i)*Ly[j]%p]	
+			aL+=[(Lxy[0]^i)*Lxy[j]%p]	
 	for i in range(6):
 		ans+=Py[i]*aL[i]
 	return(ans)
 						
-
-def preval(Py,Ly):
-	ans=0
-	aL=[]	
-	for j in range(1,3):	
-		for i in range(3):
-			aL+=[(Ly[0]^i)*Ly[j]%p]
-	return(aL)
-
-def encryptHPPK(pp1,pp2,mu1u2):
+# Computes the ciphertext 'C' for two HPPK polynomials 'Py1' and 'Py2' at Lxy=[x,y1,y2]
+def encryptHPPK(Py1,Py2,Lxy):
 	C=[]
-	C+=[eval(pp1,mu1u2)]
-	C+=[eval(pp2,mu1u2)]
+	C+=[eval(Py1,Lxy)]
+	C+=[eval(Py2,Lxy)]
 	return(C)	
-	
-def decryptHPPK(sp1,sp2,Ri1,Ri2,t1,t2,C):
-	r1=Ri1*C[0]%t1
-	r2=Ri2*C[1]%t2
+
+# Decrypts the ciphertext 'C' from secret polynomials 'sp1' and 'sp2' when 
+# using inverse modular values 'ri1' and 'ri2' with respective moduli 't1' and 't2'	
+def decryptHPPK(C,sp1,sp2,ri1,ri2,t1,t2):
+	r1=ri1*C[0]%t1
+	r2=ri2*C[1]%t2
 	fp=sp1-GF(p)(r1/r2)*sp2
 	m=fp.roots()[0]
 	return(m)
@@ -109,13 +110,12 @@ def decryptHPPK(sp1,sp2,Ri1,Ri2,t1,t2,C):
 #####################################
 ### Key Generation
 
-def skpkgen(ix):
-	if ix:
-		t=randint(TLL,TUL)
-		q=randint(TLL,TUL)
-	else:
-		t=randint(TPL,TPU)
-		q=randint(TPL,TPU)
+# Generates a full HPPK secret/public key-pair '(sk,pk)', though also generates the 
+# matrices 'MP' and 'MQ' that represent the secret lattice bases 'B_S^L' and 'B_S^R'
+# for further testing purposes. These latter matrices may be computed naturally in LRA executions 
+def skpkgen():
+	t=randint(tLL,tUL)
+	q=randint(tLL,tUL)
 		
 	f=rply(1)
 	h=rply(1)
@@ -152,12 +152,8 @@ def skpkgen(ix):
 		VQ2s[i]+=p*randint(1,p)
 	ZP=Z(list(vPs))
 	ZQ=Z(list(vQs))
-	if ix:
-		Pp=EL(Ps,R,t)
-		Qp=EL(Qs,S,q)
-	else:
-		Pp=EL(VP2s,R,t)
-		Qp=EL(VQ2s,S,q)
+	Pp=EL(Ps,R,t)
+	Qp=EL(Qs,S,q)
 	Pp=vector(ZZ,Pp)
 	Qp=vector(ZZ,Qp)
 
@@ -167,75 +163,65 @@ def skpkgen(ix):
 	MP=matrix(ZZ,[vPs,bPv])
 	MQ=matrix(ZZ,[vQs,bQv])
 	
-	sk=[[Ps,[t,R,Ri]],[Qs,[q,S,Si]]]
+	sk=[[vector(Ps),[t,R,Ri]],[vector(Qs),[q,S,Si]]]
 	pk=[Pp,Qp]
-	if ix:
-		return(sk,pk,[MP,MQ])
-	else:
-		return(sk,pk,[MP,MQ],[VP2s,VQ2s])
-#########################################
-### Evolved Lattice Reconstitution Attack
-#########################################
-### Major Form ###
+	return(sk,pk,[MP,MQ])
 
-def ELRA(PK):
+#########################################
+### Lattice Reconstitution Attack on HPPK
+#########################################
+
+# Overall Algorithm for A_LRA-HPPK
+def LRA(PK):
 	SA=[]
 	TFA=[]
 	for i in range(2):
-		SA+=[ELRAhalfstart(PK[i])]
-	TSigma=divizer(SA[0])
+		SA+=[LRAhalfstart(PK[i])]
+	TTheta=divizer(SA)
 	for i in range(2):
-		TFA+=[finalizer(PK[i],TSigma[i],SA[i][1])]
+		TFA+=[SRecover(PK[i],TTheta[i],SA[i][1],SA[i][2])]
 	return(TFA)	
 
-def ELRAhalfstart(pkH):
-	PFA=[]
-	D=discriminator(pkH)
-	SR=SRoots(pkH)
-	return(SR)
+# Executes the opening steps of the LRA on either of two public key polynomials
+def LRAhalfstart(pkH):
+	D=DMR(pkH)
+	SR=SRoots(D[0])
+	return(SR,D[0],D[1])
 
+# Selects and compares polynomials from two lists to see which pairing has a gcd with degree >= 4
 def divizer(LT):
 	L1=[]
 	L2=[]
-	for el in LT[0][0]:
+	for el in LT[0][0][0]:
 		L1+=[Z(list(el))]
-	for el in LT[1][0]:
+	for el in LT[1][0][0]:
 		L2+=[Z(list(el))]		
+
 	for el1 in L1:
 		for el2 in L2:
 			dp=gcd(el1,el2).degree()
 			if dp>=4:
 				return(el1,el2)
 	
-	
-def finalizer(pkH,tsigma,EFM): 
-	PFA+=[SRecover(EFM,vector(ZZ,tsigma))]
-	FA=[]
-	for ax in PFA:
-		at=gcdoutV(ax[1])[0]
-		tp=gcdoutV(D*at)[1]
-		ind=0
-		while(gcd(tp,at[ind])!=1):
-			ind+=1
-			
-		Rp=xgcd(at[ind],tp)[1]*pkH[ind]%tp
-		FK=Rp*at%tp
-		if vector(ZZ,pkH)==vector(ZZ,FK):
-			return(at,Rp,tp)		
 
+# Computes potential secret components and checks the necessary public half-key result
+# of 'FK' against the given public half-key 'pkH' for equality	
 
-### Echelon Discriminator Component ###
+### Discriminator Matrix Reduction ###
 
-def EDC(PK):
-	Mat=discriminator(PK)
-	D=Mat.LLL()
-	D=D.matrix_from_rows(range(4))
-	D=D.right_kernel().matrix()
-	return(D)
+# Overall algorithm for A_DMR, the discriminator matrix reduction
+def DMR(PK):
+	D=discriminator(PK)
+	U=D.LLL()
+	U4=U[4]
+	U=U.matrix_from_rows(range(4))
+	K=U.right_kernel().matrix()
+	return(K,U4)
 
+# Builds the discriminator matrix from a list of public polynomial coefficients
 def discriminator(pkL):
 	rl=[]
-	r2=[]
+	D2=[]
 	LY=xgcdList(pkL)
 	ln=len(LY)
 	for i in range(ln):
@@ -249,20 +235,13 @@ def discriminator(pkL):
 				L1M=LY[i][:2]+[X1]
 				L2M=LY[j][:2]+[X2]
 				rl+=[eqsm(L1M,L2M)]
-	r1=matrix(rl)
-	r1=r1.echelon_form()
-	r1=r1[:r1.rank()]
-	
-	for i in range(5):
-		cv=gcd(r1[i][i],r1[i][5])
-		if cv>1:
-			for j in range(5):	
-				if r1[i][j]!=0:
-					cv=gcd(cv,r1[i][j])	
-		r2+=[r1[i]/cv]
-	r2=matrix(ZZ,r2)
-	return(r2)
+	D=matrix(rl)
+	D=D.echelon_form()
+	D=D[:D.rank()]
+	return(D)
 
+
+# Computes the xgcd/Bezout coefficients for pairs of public key elements in the list 'LP' 
 def xgcdList(LP):
 	coll=[]
 	for i in range(5):
@@ -270,6 +249,8 @@ def xgcdList(LP):
 			coll+=[[i,j,xgcd(LP[i],LP[j])]]
 	return(coll)
 
+# Using two lists of paired Bezout coefficients derived from public polynomial coefficients, 
+# computes a vector in the set \mathcal{N} to be used in the discriminator matrix.
 def eqsm(L1,L2):
 	fineq=[0 for i in range(6)]
 	g0123=[L1[2][1],L1[2][2],L2[2][1],L2[2][2]]
@@ -282,25 +263,62 @@ def eqsm(L1,L2):
 			
 ### Final Secret Recovery Component ###
 
-def SRecover(EM,vf):
+def SRecover(pkH,theta,EM,U4):
 	Tv=[]
+	vZZtheta=vector(ZZ,theta)
 	for i in range(6):
 		ZF=[]
 		for j in range(5):
 			cf=randint(1,p)
-			ZF+=[cf*vf%p]
+			ZF+=[cf*vZZtheta%p]
 			
 		A=EM.stack(matrix(ZF))
 		KAv=vector((A.left_kernel()).matrix()[0])
 		Tv+=[KAv[2:]*A[2:]]
+	
 	TV=(matrix(Tv).LLL())[4:]
 	TT=copy(TV)
 	TT[0]*=TT[0][0].sign()
 	TT[1]*=TT[1][0].sign()
-	return(TT)	
+	TT=matrix(QQ,TT)
+	Zlims=ceil(2*l2(l2(p)))
+	for k in range(1,Zlims):
 		
-def SRoots(pkH):
-	M=EDC(pkH)
+		for i in range(Zlims):
+			for j in range(Zlims):
+				SPoss=QQ(i/k)*TT[0]+QQ(j/k)*TT[1]
+				
+				SPoss*=SPoss[0].sign()
+				
+				if coefflims(SPoss):
+					SPoss=vector(ZZ,SPoss)
+					XF=FRec(SPoss,U4,pkH)
+					if XF[0]:
+						return(XF[1])		
+				SPoss=QQ(i/k)*TT[0]-QQ(j/k)*TT[1]
+				SPoss*=SPoss[0].sign()
+				if coefflims(SPoss):
+					SPoss=vector(ZZ,SPoss)
+					XF=FRec(SPoss,U4,pkH)
+					if XF[0]:
+						return(XF[1])	
+
+def FRec(sposs,u4,pkH):
+
+	tp=abs(u4*sposs)
+	ind=0
+	while((gcd(tp,sposs[ind])!=1) and (ind<5)):
+		ind+=1
+	rp=xgcd(sposs[ind],tp)[1]*pkH[ind]%tp
+	FK=rp*sposs%tp
+	#print(FK)
+	if vector(ZZ,pkH)==vector(ZZ,FK):
+	
+		return(True,[sposs,rp,tp])
+	else:
+		return(False,[zero_vector(6),0,0])
+		
+def SRoots(M):
 	N=matrix(GF(p),copy(M))
 	if N[1][1]==0:
 		print(N[0])
@@ -320,24 +338,29 @@ def SRoots(pkH):
 		vp=vector(GF(p),list(U[0][0]+mp*U[1][0])+list(U[0][1]+mp*U[1][1]))
 		Fposs+=[vp]
 	return(Fposs,M)
-	
+
+# Constructs two 2x3 matrices out of a 2x6 matrix by dividing the columns in two	
 def VecToMat(M):
 	Tm=matrix(GF(p),[M[0][:3],M[0][3:]])
 	Am=matrix(GF(p),[M[1][:3],M[1][3:]])
 	return(Tm,Am)
 
+# Constructs the polynomial '\Gamma(z)' which allows us to find the hidden Fp root 'rho' 
+# related to the secret Fp[z] polynomial '\Psi(z,y1,y2)'
 def plyfourth(T,A):
-	Gam=z+A[0][2]*z^2
+	Alp=z+A[0][2]*z^2
 	Bet=-1-T[0][1]*z-T[0][2]*z^2
-	Phi=(T[1][0]+T[1][1]*z+T[1][2]*z^2)*Gam+Bet*(A[1][0]+A[1][1]*z+A[1][2]*z^2)
-	return(Phi)
+	Gamma=(T[1][0]+T[1][1]*z+T[1][2]*z^2)*Alp+Bet*(A[1][0]+A[1][1]*z+A[1][2]*z^2)
+	return(Gamma)
 
 
 #########################################
-### ELRA Mass Tester
+### LRA Mass Tester
 #########################################
 
-def ELRAMass(ntests):
+# Mass testing function for the LRA, running 'ntests' times to return mean values of 
+# success times and case information
+def LRAMass(ntests):
 	timestart=time.time()
 	rtcases=0
 	maxval=0
@@ -345,8 +368,8 @@ def ELRAMass(ntests):
 	maxdenom=0
 	maxnum=0
 	for i in range(ntests):
-		K=skpkgen(True)
-		ANS=ELRAM1(K)
+		K=skpkgen()
+		ANS=LRAM1(K)
 		
 		for J in ANS:
 			for jv in J:
@@ -360,36 +383,62 @@ def ELRAMass(ntests):
 							maxdenom=abs(ji.denominator())
 						if abs(ji.numerator())>maxnum:
 							maxnum=abs(ji.numerator())	
-				if fmark and (norm(jv)<log(log(p,2),2)):
+				if fmark and (norm(jv)<2*log(log(p,2),2)):
 					normllp+=1	
 					if abs(ji)>maxval:
 						maxval=abs(ji)
 				rtcases+=rtp				
 	timetotal=time.time()-timestart
 	print("Completed successfully in:",RR(timetotal/60),"minutes")
-	print("Normloglogp cases:",normllp)
+	print("Number of integer cases with final representing coefficients <= 2loglogp:",normllp)
 	print("Maximum integer coefficient absolute value:",maxval)
+
+	print("Rational number cases:",rtcases)
 	print("Maximum rational denominator absolute value:",maxdenom)
 	print("Maximum rational numerator absolute value:",maxnum)
-	print("Rational number cases:",rtcases)
+
 	return(maxval,maxdenom,rtcases,RR(timetotal/60))
-	
-def ELRAM1(K):
+
+# Returns the representation coefficients of lattice bases \mathcal{Z}^L,\mathcal{Z}^R required 
+# to compute the exact private key vectors \bar{\Psi}^L,\bar{\Psi}^R. 	
+def LRAM1(K):
 	PK=K[1]
 	SK=K[0]
 	SA=[]
 	TFA=[]
 	for i in range(2):
-		SA+=[ELRAhalfstart(PK[i])]
-	TSigma=divizer(SA)
-	if TSigma==None:
+		SA+=[LRAhalfstart(PK[i])]
+	TTheta=divizer(SA)
+	if TTheta==None:
 		print(SA)
 	for i in range(2):
-		TFA+=[finalizerMass(PK[i],TSigma[i],SA[i][1],SK[i][0])]
+		TFA+=[finalizerMass(PK[i],TTheta[i],SA[i][1],SK[i][0])]
 	return(TFA)
 
-def finalizerMass(pkH,tsigma,EFM,skH): 
+# Mass testing version computation for checking if a total LRA half-key result compares properly to 
+# its related public half-key 'pkH' and secret half-key 'skH' and computes the representation coefficients 
+# of lattice bases \mathcal{Z}^X required to compute the exact private key vector \bar{\Psi}^X
+def SRecoverMass(EM,theta):
+	Tv=[]
+	for i in range(6):
+		ZF=[]
+		for j in range(5):
+			cf=randint(1,p)
+			ZF+=[cf*theta%p]
+			
+		A=EM.stack(matrix(ZF))
+		KAv=vector((A.left_kernel()).matrix()[0])
+		Tv+=[KAv[2:]*A[2:]]
+	TV=(matrix(Tv).LLL())[4:]
+	TT=copy(TV)
+	TT[0]*=TT[0][0].sign()
+	TT[1]*=TT[1][0].sign()
+	return(TT)	
+
+
+
+def finalizerMass(pkH,TTheta,EFM,skH): 
 	FCoeffs=[]
-	Mb1b2=SRecover(EFM,vector(ZZ,tsigma))
+	Mb1b2=SRecoverMass(EFM,vector(ZZ,TTheta))
 	FCoeffs+=[Mb1b2.solve_left(vector(skH))]
 	return(FCoeffs)	
