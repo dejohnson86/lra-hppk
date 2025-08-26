@@ -1,7 +1,6 @@
 '''
-There are some extra functions included for further testing purposes, like encryption and decryption.
-
-
+There are some extra, if not fully supported, functions for further testing purposes, like encryption and decryption
+that require a bit more work, e.g., in message generation
 
 #####################################
 ## A selection of usable primes of the given bit-length
@@ -21,6 +20,7 @@ import time
 #####################################
 ### Universal HPPK Parameters/Objects
 
+# default 256-bit prime
 p=94067902964486534841221493569020601188977813763773733271352395468028284646947
 
 md=2*ceil(log(p,2))+6
@@ -56,16 +56,9 @@ def EL(ly,Rx,tx):
 def mtr(n,R1,T1):
 	return((R1*n-(R1*n)%T1)/T1)
 
-# Divides out the overall gcd of a vector in ZZ^6
+# Divides out the overall gcd of a vector over ZZ
 def gcdoutV(vec):
-	ind=0
-	while vec[ind]==0:
-		ind+=1
-	cv=gcd(vec[ind],vec[ind+1])
-	if cv==1:
-		return(vec,1)
-	for i in range(ind+1,5):
-		cv=gcd(cv,vec[i])
+	cv=gcd(vec)
 	vnew=vector(ZZ,copy(vec)/cv)
 	return(vnew,cv)
 
