@@ -166,7 +166,7 @@ def skpkgen():
 ### Lattice Reconstitution Attack on HPPK
 #########################################
 
-# Overall Algorithm for A_LRA-HPPK
+# Overall algorithm for A_LRA-HPPK
 def LRA(PK):
 	SA=[]
 	TFA=[]
@@ -362,6 +362,8 @@ def LRAMass(ntests):
 	normllp=0
 	maxdenom=0
 	maxnum=0
+	maxtime=0
+	mintime=0
 	for i in range(ntests):
 		K=skpkgen()
 		ANS=LRAM1(K)
@@ -378,18 +380,21 @@ def LRAMass(ntests):
 							maxdenom=abs(ji.denominator())
 						if abs(ji.numerator())>maxnum:
 							maxnum=abs(ji.numerator())	
-				if fmark and (norm(jv)<2*log(log(p,2),2)):
+				if fmark and (abs(jv[0])<2*log(log(p,2),2)) and (abs(jv[1])<2*log(log(p,2),2)):
 					normllp+=1	
-					if abs(ji)>maxval:
-						maxval=abs(ji)
+				if abs(jv[0])>maxval:
+					maxval=abs(jv[0])
+				if abs(jv[1])>maxval:
+					maxval=abs(jv[1])	
 				rtcases+=rtp				
 	timetotal=time.time()-timestart
 	print("Completed successfully in:",RR(timetotal/60),"minutes")
 	print("Number of integer cases with final representing coefficients <= 2loglogp:",normllp)
 	print("Maximum integer coefficient absolute value:",maxval)
 
-	print("Rational number cases:",rtcases)
+	print("Number of rational cases:",rtcases)
 	print("Maximum rational denominator absolute value:",maxdenom)
+	print("Which gives the Boolean", maxdenom<= 2*l2(l2(p)), "for", maxdenom, "<=", 2*l2(l2(p)), " = 2loglogp (base 2)")
 	print("Maximum rational numerator absolute value:",maxnum)
 
 	return(maxval,maxdenom,rtcases,RR(timetotal/60))
